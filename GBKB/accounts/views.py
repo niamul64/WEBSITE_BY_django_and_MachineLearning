@@ -12,6 +12,7 @@ from django.core.mail import send_mail
 import random
 from django.conf import settings
 import joblib
+from predictor.models import Review,DataSet
 # Create your views here.
 
 def prediction(request):
@@ -21,34 +22,35 @@ def prediction(request):
         if details.activation != True:
             return redirect('activation')
     else:
-        return redirect('signin')
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
 
     if request.method == 'POST':
         lis=[]
 
         sq= request.POST['sq']
-        lis.append(sq)
+        lis.append(int(sq))
         wr=request.POST['wr']
-        lis.append(wr)
+        lis.append(int(wr))
         br = request.POST['br']
-        lis.append(br)
+        lis.append(int(br))
         fl = request.POST['fl']
-        lis.append(fl)
+        lis.append(int(fl))
         li = request.POST['li']
-        lis.append(li)
+        lis.append(int(li))
         rs = request.POST['rs']
-        lis.append(rs)
+        lis.append(int(rs))
         ai = request.POST['ai']
-        lis.append(ai)
-        print(lis)
+        lis.append(int(ai))
+
         cls= joblib.load('Finalized_model.sav')
         ans=int(cls.predict([lis]))
 
-        print(ans)
-
-
-        return render(request, 'prediction/predict.html',{'ans':ans,'ai':ai,'sq':sq,'wr':wr,'br':br,'fl':fl,'li':li,'rs':rs})
-    return render(request, 'prediction/predict.html')
+        area=['Mirpur','Uttora','Bonani','Dhanmondi','Basundhara','Gulshan']
+        lift=['No lift','Lift service available']
+        Review(userID=request.user, sqft=lis[0], washRoom=lis[1], bedRoom=lis[2], floor=lis[3],lift=lis[4],roadSize=lis[5],location=lis[6], price=ans).save()
+        return render(request, 'prediction/predict.html',{'ans':ans,'ai':ai,'area':area[int(ai)-1],'sq':sq,'wr':wr,'br':br,'fl':fl,'li':li,'Lift':lift[int(li)],'rs':rs})
+    ai,sq,wr,br,fl,li,rs=None,None,None,None,None,None,None
+    return render(request, 'prediction/predict.html',{'ai':ai,'sq':sq,'wr':wr,'br':br,'fl':fl,'li':li,'rs':rs})
 
 
 
@@ -57,7 +59,7 @@ def signin(request):
         return redirect('home')
     if request.method == 'POST':
         user =auth.authenticate(username=request.POST['username'],password=request.POST['password'])
-        print (request.POST['username'])
+
         if user is not None:
             auth.login(request, user)
             if request.user.is_authenticated:
@@ -135,7 +137,7 @@ def activation(request):
         details = get_object_or_404(ExtentionUser, userID=request.user)
 
     else:
-        return render(request, 'accounts/signin.html', {'error': "sign-in first"})
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
 
     m = ""
     if request.method == 'POST':
@@ -179,7 +181,7 @@ def confirmActivation(request):
 
 
     else:
-        return render(request, 'accounts/signin.html', {'error': "sign-in first"})
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
 
 
     details = get_object_or_404(ExtentionUser, userID=request.user)
@@ -201,7 +203,7 @@ def postAd(request):
         if details.activation!=True:
             return redirect('activation')
     else:
-        return render(request, 'accounts/signin.html', {'error': "To post your AD you need to sign-in first"})
+        return render(request, 'accounts/signin.html', {'error': "To post your AD you need to sign-in"})
 
     e=''
     if request.method == 'POST':
@@ -239,7 +241,7 @@ def detail(request, pId ):
         if details.activation!=True:
             return redirect('activation')
     else:
-        return redirect('signin')
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
     obj = get_object_or_404(PostAd, pk=pId)
     extendSellerInfo=get_object_or_404(ExtentionUser, userID=obj.userID)
     return render(request,'AdPosting/detail.html', {'obj': obj,"mobile":extendSellerInfo})
@@ -250,12 +252,15 @@ def myAccount(request):
         if details.activation!=True:
             return redirect('activation')
     else:
-        return redirect('signin')
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
+    help=Review.objects.all()
 
 
     Ads=PostAd.objects.all().filter(userID=request.user).order_by("-date")
 
 
+    if help:
+        return render(request, 'accounts/myAccount.html',{'obj':Ads, "ex":details,'help':True })
     return render(request, 'accounts/myAccount.html',{'obj':Ads, "ex":details})
 
 
@@ -266,7 +271,7 @@ def changeImage(request):
         if details.activation!=True:
             return redirect('activation')
     else:
-        return redirect('signin')
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
 
     if request.method == 'POST':
         if request.FILES.get('image'):
@@ -287,7 +292,7 @@ def changeEmail(request):
         if details.activation!=True:
             return redirect('activation')
     else:
-        return redirect('signin')
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
 
     if request.method == 'POST':
         mail = request.POST['email']
@@ -325,7 +330,7 @@ def changeNumber(request):
         if details.activation!=True:
             return redirect('activation')
     else:
-        return redirect('signin')
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
 
     if request.method == 'POST':
         num=request.POST['number']
@@ -338,4 +343,59 @@ def changeNumber(request):
     Ads=PostAd.objects.all().filter(userID=request.user).order_by("-date")
     return render(request, 'accounts/myAccount.html',{'obj':Ads, "ex":details, "error2":"Enter Mobile Number Correctly"})
 
+
+def reviewFromUser(request):
+    if request.user.is_authenticated:
+        details = get_object_or_404(ExtentionUser, userID=request.user)
+        if details.activation!=True:
+            return redirect('activation')
+    else:
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
+    help=Review.objects.all()
+    Message="If you know the actual price over any of the predicted price then please enter the price and submit"
+
+    return render(request, 'prediction/review.html', {"help":help,'message':Message})
+def reviewSub(request,pId):
+    if request.user.is_authenticated:
+        details = get_object_or_404(ExtentionUser, userID=request.user)
+        if details.activation!=True:
+            return redirect('activation')
+    else:
+        return render(request, 'accounts/signin.html', {'error': "At first, sign-in"})
+
+
+    obj=get_object_or_404(Review, id=pId)
+    if request.method == 'POST':
+        price=int(request.POST['actualPrice'])
+        print (price)
+
+        predictedPrice=int(obj.price)
+        pricedifference=abs(predictedPrice-price)
+        print ("price diff:",pricedifference)
+        flag=False
+        if (predictedPrice < 10000000) and (pricedifference <= 800000):
+            print ("less than one cror")
+            flag=True
+        elif (predictedPrice < 20000000 ) and (predictedPrice > 10000000) and (pricedifference <= 1000000):
+            flag=True
+        elif (predictedPrice<30000000) and (predictedPrice > 20000000 ) and (predictedPrice > 10000000) and (pricedifference <= 1500000):
+            flag=True
+        elif (predictedPrice<40000000) and (predictedPrice > 30000000) and (predictedPrice > 20000000 ) and (predictedPrice > 10000000) and (pricedifference <= 2000000):
+            flag=True
+        elif (predictedPrice<50000000) and (predictedPrice > 40000000) and (predictedPrice > 30000000) and (predictedPrice > 20000000 ) and (predictedPrice > 10000000) and (pricedifference <= 2500000):
+            flag=True
+
+        if flag==True:
+            print ("saving")
+            DataSet(sqft=obj.sqft, washRoom=obj.washRoom, bedRoom=obj.bedRoom, floor=obj.floor, lift=obj.lift,roadSize=obj.roadSize, location=obj.location, price=price).save()
+            get_object_or_404(Review, id=pId).delete()
+
+
+    help = Review.objects.all()
+    Message = "You submission noted, you can help us more."
+    return render(request, 'prediction/review.html', {"help":help,'message':Message})
+
+
+def about(request):
+    return render(request, 'about/about.html',)
 
