@@ -7,7 +7,7 @@
 Otherwise, if You want to deploy this website in local machine: (follow the steps)
 <br><br>
 1.	At first set up the virtual environment. (python 3.7)<br>
-2.	clone the GitHub directory, under that environment. ($ https://github.com/niamul64/django_and_MachineLearning_GBKB.git )<br>
+2.	clone the GitHub directory, under that environment. ($ git clone https://github.com/niamul64/django_and_MachineLearning_GBKB.git )<br>
 3.	Now change directory to ‘GBKB. ($ cd GBKB)<br>
 4.	Install Django==2.2 ($ pip install Django==2.2)<br>
 5.	Now again change directory to Django project ‘GBKB’. ($ cd GBKB)<br>
